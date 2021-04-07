@@ -1,106 +1,144 @@
 import {
+  ProductGetters,
   AgnosticMediaGalleryItem,
   AgnosticAttribute,
-  AgnosticPrice,
-  ProductGetters
+  AgnosticPrice
 } from '@vue-storefront/core';
-import { ProductVariant } from '@vue-storefront/boilerplate-api/src/types';
+import {
+  formatAttributeList,
+  getVariantByAttributes,
+  createPrice
+} from './_utils';
+import { ProductImage, ProductVariant } from '@vue-storefront/saleor-api';
 
-type ProductVariantFilters = any
+interface ProductVariantFilters {
+  master?: boolean;
+  attributes?: Record<string, string>;
+}
 
-// TODO: Add interfaces for some of the methods in core
-// Product
+export const getProductName = (
+  product: ProductVariant | Readonly<ProductVariant>
+): string => (product as any)?.name || '';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getProductName = (product: ProductVariant): string => product?.name || 'Product\'s name';
+export const getProductSlug = (
+  product: ProductVariant | Readonly<ProductVariant>
+): string => product.product.slug || '';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getProductSlug = (product: ProductVariant): string => product.sku;
+export const getProductPrice = (
+  product: ProductVariant | Readonly<ProductVariant>
+): AgnosticPrice => createPrice(product);
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getProductPrice = (product: ProductVariant): AgnosticPrice => {
-  return {
-    regular: product?.price?.original || 0,
-    special: product?.price?.current || 0
-  };
+export const getProductGallery = (
+  product: ProductVariant
+): AgnosticMediaGalleryItem[] => {
+  const images = product?.images || [];
+
+  return images.map((image: ProductImage) => ({
+    small: image.url,
+    big: image.url,
+    normal: image.url
+  }));
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getProductGallery = (product: ProductVariant): AgnosticMediaGalleryItem[] => [
-  {
-    small: 'https://s3-eu-west-1.amazonaws.com/commercetools-maximilian/products/081223_1_large.jpg',
-    normal: 'https://s3-eu-west-1.amazonaws.com/commercetools-maximilian/products/081223_1_large.jpg',
-    big: 'https://s3-eu-west-1.amazonaws.com/commercetools-maximilian/products/081223_1_large.jpg'
-  },
-  {
-    small: 'https://s3-eu-west-1.amazonaws.com/commercetools-maximilian/products/081223_1_large.jpg',
-    normal: 'https://s3-eu-west-1.amazonaws.com/commercetools-maximilian/products/081223_1_large.jpg',
-    big: 'https://s3-eu-west-1.amazonaws.com/commercetools-maximilian/products/081223_1_large.jpg'
+export const getProductCoverImage = (product: ProductVariant): string =>
+  product?.product.thumbnail?.url || '';
+
+export const getProductFiltered = (
+  variants: ProductVariant[],
+  filters: ProductVariantFilters | any = {}
+): ProductVariant[] => {
+  if (!variants) {
+    return [];
   }
-];
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getProductCoverImage = (product: ProductVariant): string => 'https://s3-eu-west-1.amazonaws.com/commercetools-maximilian/products/081223_1_large.jpg';
+  if (filters.attributes && Object.keys(filters.attributes).length > 0) {
+    return [getVariantByAttributes(variants, filters.attributes)];
+  }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getProductFiltered = (products: ProductVariant[], filters: ProductVariantFilters | any = {}): ProductVariant[] => {
-  return [
-    {
-      _id: 1,
-      _description: 'Some description',
-      _categoriesRef: [
-        '1',
-        '2'
-      ],
-      name: 'Black jacket',
-      sku: 'black-jacket',
-      images: [
-        'https://s3-eu-west-1.amazonaws.com/commercetools-maximilian/products/081223_1_large.jpg'
-      ],
-      price: {
-        original: 12.34,
-        current: 10.00
-      }
-    },
-    {
-      _id: 2,
-      _description: 'Some different description',
-      _categoriesRef: [
-        '1',
-        '2',
-        '3'
-      ],
-      name: 'White shirt',
-      sku: 'white-shirt',
-      images: [
-        'https://s3-eu-west-1.amazonaws.com/commercetools-maximilian/products/081223_1_large.jpg'
-      ],
-      price: {
-        original: 15.11,
-        current: 11.00
-      }
+  if (filters.master) {
+    return variants.filter((variant) => {
+      return variant.id === variant.product.defaultVariant?.id;
+    });
+  }
+
+  return variants;
+};
+
+export const getProductAttributes = (
+  products: ProductVariant[] | ProductVariant,
+  filterByAttributeName?: string[]
+): Record<string, AgnosticAttribute | string> => {
+  const isSingleProduct = !Array.isArray(products);
+  const productList = (isSingleProduct
+    ? [products]
+    : products) as ProductVariant[];
+
+  if (!products || productList.length === 0) {
+    return {} as any;
+  }
+
+  // TODO this no longer works and the characters are empty
+  const formatAttributes = (product: ProductVariant): AgnosticAttribute[] =>
+    formatAttributeList(product.attributes || []).filter((attribute) =>
+      filterByAttributeName
+        ? filterByAttributeName.includes(attribute.name)
+        : attribute
+    );
+
+  const reduceToUniques = (prev, curr) => {
+    const isAttributeExist = prev.some(
+      (el) => el.name === curr.name && el.value === curr.value
+    );
+
+    if (!isAttributeExist) {
+      return [...prev, curr];
     }
-  ];
+
+    return prev;
+  };
+
+  const reduceByAttributeName = (prev, curr) => ({
+    ...prev,
+    [curr.name]: isSingleProduct
+      ? curr.value
+      : [
+        ...(prev[curr.name] || []),
+        {
+          value: curr.value,
+          label: curr.label
+        }
+      ]
+  });
+
+  return productList
+    .map((product) => formatAttributes(product))
+    .reduce((prev, curr) => [...prev, ...curr], [])
+    .reduce(reduceToUniques, [])
+    .reduce(reduceByAttributeName, {});
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getProductAttributes = (products: ProductVariant[] | ProductVariant, filterByAttributeName?: string[]): Record<string, AgnosticAttribute | string> => {
-  return {};
+export const getProductDescription = (product: ProductVariant): any =>
+  (product as any)?.description || '';
+
+export const getProductCategoryIds = (product: ProductVariant): string[] => {
+  if (!product) {
+    // TODO is this legit ?
+    return [''];
+  } else {
+    return [product.product.category.id];
+  }
 };
 
-export const getProductDescription = (product: ProductVariant): any => (product as any)?._description || '';
+export const getProductId = (product: ProductVariant): string =>
+  (product as any)?.product.id || '';
 
-export const getProductCategoryIds = (product: ProductVariant): string[] => (product as any)?._categoriesRef || '';
+export const getFormattedPrice = (price: number): string => (price as any) as string;
 
-export const getProductId = (product: ProductVariant): string => (product as any)?._id || '';
+export const getTotalReviews = (product: ProductVariant): number =>
+  (product as any)?._rating?.count || 0;
 
-export const getFormattedPrice = (price: number) => String(price);
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getProductTotalReviews = (product: ProductVariant): number => 0;
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getProductAverageRating = (product: ProductVariant): number => 0;
+export const getAverageRating = (product: ProductVariant): number =>
+  (product as any)?._rating?.averageRating || 0;
 
 const productGetters: ProductGetters<ProductVariant, ProductVariantFilters> = {
   getName: getProductName,
@@ -113,9 +151,9 @@ const productGetters: ProductGetters<ProductVariant, ProductVariantFilters> = {
   getDescription: getProductDescription,
   getCategoryIds: getProductCategoryIds,
   getId: getProductId,
-  getFormattedPrice: getFormattedPrice,
-  getTotalReviews: getProductTotalReviews,
-  getAverageRating: getProductAverageRating
+  getFormattedPrice,
+  getTotalReviews,
+  getAverageRating
 };
 
 export default productGetters;

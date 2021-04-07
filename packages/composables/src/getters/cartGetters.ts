@@ -1,56 +1,52 @@
 import { CartGetters, AgnosticPrice, AgnosticTotals, AgnosticCoupon, AgnosticDiscount } from '@vue-storefront/core';
-import { Cart, LineItem } from '@vue-storefront/boilerplate-api/src/types';
+import { Cart, LineItem } from '@vue-storefront/saleor-api/src/types';
+import { Checkout, CheckoutLine } from '@vue-storefront/saleor-api';
+import { createPrice } from './_utils';
+import { getProductAttributes } from './productGetters';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getCartItems = (cart: Cart): LineItem[] => [
-  {
-    _id: 1,
-    _description: 'Some description',
-    _categoriesRef: [
-      '1',
-      '2'
-    ],
-    name: 'Black jacket',
-    sku: 'black-jacket',
-    images: [
-      'https://s3-eu-west-1.amazonaws.com/commercetools-maximilian/products/081223_1_large.jpg'
-    ],
-    price: {
-      original: 12.34,
-      current: 10.00
-    },
-    qty: 1
+export const getCartItems = (checkout: Checkout): CheckoutLine[] => {
+  if (!checkout) {
+    return [];
   }
-];
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getCartItemName = (product: any): string => product?.name || 'Product\'s name';
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getCartItemImage = (product: any): string => product?.images[0] || 'https://s3-eu-west-1.amazonaws.com/commercetools-maximilian/products/081223_1_large.jpg';
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getCartItemPrice = (product: any): AgnosticPrice => {
-  return {
-    regular: product?.price?.original || 12,
-    special: product?.price?.current || 10
-  };
+  return checkout.lines;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getCartItemQty = (product: LineItem): number => 1;
+export const getCartItemName = (checkoutLine: CheckoutLine): string =>
+  checkoutLine.variant.name;
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getCartItemAttributes = (product: LineItem, filterByAttributeName?: Array<string>) => ({ color: 'red' });
+export const getCartItemImage = (checkoutLine: CheckoutLine): string => {
+  return checkoutLine.variant.product.thumbnail.url;
+};
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getCartItemSku = (product: any): string => product?.sku || 'some-sku';
+export const getCartItemPrice = (checkoutLine: CheckoutLine): AgnosticPrice =>
+  createPrice(checkoutLine.variant);
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getCartTotals = (cart: Cart): AgnosticTotals => {
+export const getCartItemQty = (product: CheckoutLine): number =>
+  product.quantity;
+
+export const getCartItemAttributes = (
+  product: CheckoutLine,
+  filterByAttributeName?: Array<string>
+) => getProductAttributes(product.variant, filterByAttributeName);
+
+export const getCartItemSku = (product: CheckoutLine): string =>
+  product.variant.sku;
+
+export const getCartTotals = (checkout: Checkout): AgnosticTotals => {
+  if (!checkout) {
+    return {
+      total: 0,
+      subtotal: 0,
+      special: 0
+    };
+  }
+
+  // TODO calculate
   return {
-    total: 10,
-    subtotal: 10
+    total: 0,
+    subtotal: 0,
+    special: 0
   };
 };
 
@@ -58,9 +54,9 @@ export const getCartTotals = (cart: Cart): AgnosticTotals => {
 export const getCartShippingPrice = (cart: Cart): number => 0;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getCartTotalItems = (cart: Cart): number => 1;
+export const getCartTotalItems = (cart: Checkout): number => cart?.lines?.length || 0;
 
-export const getFormattedPrice = (price: number) => String(price);
+export const getFormattedPrice = (price: number): string => String(price);
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const getCoupons = (cart: Cart): AgnosticCoupon[] => [];

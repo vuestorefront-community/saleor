@@ -5,49 +5,78 @@ import {
   useCartFactory,
   UseCartFactoryParams
 } from '@vue-storefront/core';
-import { Cart, CartItem, Coupon, Product } from '../types';
+import { Coupon } from '../types';
+import { Checkout, CheckoutLine, ProductVariant } from '@vue-storefront/saleor-api/src';
 
-const params: UseCartFactoryParams<Cart, CartItem, Product, Coupon> = {
+const params: UseCartFactoryParams<Checkout, CheckoutLine, ProductVariant, Coupon> = {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   load: async (context: Context, { customQuery }) => {
     console.log('Mocked: loadCart');
-    return {};
+    console.log(context);
+    return null;
   },
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   addItem: async (context: Context, { currentCart, product, quantity, customQuery }) => {
-    console.log('Mocked: addToCart');
-    return {};
+
+    const existingCheckoutId = currentCart?.id;
+
+    // TODO set the total
+    if (existingCheckoutId) {
+      const checkoutLinesAdd = await context.$saleor.api.checkoutLinesAdd(
+        existingCheckoutId,
+        product.id,
+        quantity
+      );
+
+      return checkoutLinesAdd.checkout;
+    } else {
+      const checkoutCreate = await context.$saleor.api.checkoutCreate(
+        product.id,
+        quantity
+      );
+
+      return checkoutCreate.checkout;
+    }
   },
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   removeItem: async (context: Context, { currentCart, product, customQuery }) => {
-    console.log('Mocked: removeFromCart');
-    return {};
+    const checkoutLineDelete = await context.$saleor.api.checkoutLineDelete(
+      currentCart.id,
+      product.id
+    );
+
+    return checkoutLineDelete.checkout;
   },
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   updateItemQty: async (context: Context, { currentCart, product, quantity, customQuery }) => {
-    console.log('Mocked: updateQuantity');
-    return {};
+    const checkoutLinesUpdate = await context.$saleor.api.checkoutLinesUpdate(
+      currentCart.id,
+      product.variant.id,
+      quantity
+    );
+
+    return checkoutLinesUpdate.checkout;
   },
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   clear: async (context: Context, { currentCart }) => {
     console.log('Mocked: clearCart');
-    return {};
+    return null;
   },
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   applyCoupon: async (context: Context, { currentCart, couponCode, customQuery }) => {
     console.log('Mocked: applyCoupon');
-    return {updatedCart: {}, updatedCoupon: {}};
+    return {updatedCart: null, updatedCoupon: {}};
   },
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   removeCoupon: async (context: Context, { currentCart, coupon, customQuery }) => {
     console.log('Mocked: removeCoupon');
-    return {updatedCart: {}};
+    return {updatedCart: null};
   },
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -57,4 +86,4 @@ const params: UseCartFactoryParams<Cart, CartItem, Product, Coupon> = {
   }
 };
 
-export default useCartFactory<Cart, CartItem, Product, Coupon>(params);
+export default useCartFactory<Checkout, CheckoutLine, ProductVariant, Coupon>(params);

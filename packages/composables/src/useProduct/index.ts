@@ -5,13 +5,19 @@ import {
   UseProductFactoryParams
 } from '@vue-storefront/core';
 import { ProductsResponse } from '../types';
+import enhanceProduct from '../helpers';
 
 const params: UseProductFactoryParams<ProductsResponse, any> = {
   productsSearch: async (context: Context, params: ProductsSearchParams): Promise<ProductsResponse> => {
-    console.log('Mocked: productsSearch');
-    const { customQuery, ...searchParams } = params;
 
-    return await context.$boilerplate.api.getProduct(searchParams, customQuery);
+    const productsEdges = await context.$saleor.api.getProduct(params);
+
+    const productVariants = productsEdges.edges.flatMap((edge) =>
+      enhanceProduct(edge.node)
+    );
+
+    return productVariants;
+
   }
 };
 

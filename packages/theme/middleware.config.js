@@ -1,8 +1,14 @@
 module.exports = {
   integrations: {
-    boilerplate: {
-      location: '@vue-storefront/boilerplate-api/server',
-      configuration: {}
+    saleor: {
+      location: '@vue-storefront/saleor-api/server',
+      configuration: {
+        api: {
+          uri: 'https://demo.saleor.io/graphql/'
+        },
+        currency: 'USD',
+        country: 'US'
+      }
     }
   }
 };

@@ -1,5 +1,5 @@
 {
-  "name": "@vue-storefront/boilerplate",
+  "name": "@vue-storefront/saleor",
   "version": "2.3.0-rc.2",
   "private": true,
   "sideEffects": false,
@@ -13,7 +13,7 @@
     "prepublish": "yarn build"
   },
   "dependencies": {
-    "@vue-storefront/boilerplate-api": "^2.3.0-rc.2",
+    "@vue-storefront/saleor-api": "^2.3.0-rc.2",
     "@vue-storefront/core": "^2.3.0-rc.2"
   },
   "peerDependencies": {

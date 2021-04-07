@@ -1,20 +1,26 @@
 import { CategoryGetters, AgnosticCategoryTree } from '@vue-storefront/core';
-import { Category } from '@vue-storefront/boilerplate-api/src/types';
+import { Category } from '@vue-storefront/saleor-api';
 
-const itemToTree = (category: Category): AgnosticCategoryTree => {
-  return {
-    label: category.name,
-    slug: category.slug,
-    items: category.items.map(itemToTree),
-    isCurrent: false
-  };
-};
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const getCategoryTree = (category: Category): AgnosticCategoryTree => {
-  if (category) {
-    return itemToTree(category);
+export const getCategoryTree = (
+  category: Category
+): AgnosticCategoryTree | null => {
+  const getRoot = (category: Category): Category =>
+    category.parent ? getRoot(category.parent) : category;
+  const buildTree = (rootCategory: Category) => ({
+    label: rootCategory.name,
+    slug: rootCategory.slug,
+    id: rootCategory.id,
+    isCurrent: rootCategory.id === category.id,
+    items: rootCategory.children.edges.map((e) => {
+      return buildTree(e.node);
+    })
+  });
+
+  if (!category) {
+    return null;
   }
-  return {} as AgnosticCategoryTree;
+
+  return buildTree(getRoot(category));
 };
 
 const categoryGetters: CategoryGetters<Category> = {
